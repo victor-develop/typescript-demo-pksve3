@@ -1,13 +1,23 @@
-const via = <T>(x: T) => ({
-  then: <TFout>(f: (input: T) => TFout) => {
-    const output = f(x);
+const via = <T>(x: T) => {
+  const done = <TFout>(f: (input: T) => TFout) => {
+    const executionResult = f(x);
     const result = {
-      ...output,
-      previous: x,
+      executionResult,
+      previous: {
+        stepName: f.name || null,
+        ...x,
+      },
     };
-    return via(result);
-  },
-});
+    return result;
+  };
+  const next = <TFout>(f: (input: T) => TFout) => {
+    return via(done(f));
+  };
+  return {
+    done,
+    next,
+  };
+};
 
 const flow = {
   with: <T>(input: T) => {
@@ -20,19 +30,64 @@ flow
     addr: '前海嘉里中心',
     supplier_name: 'Apple',
   })
-  .then(function postAddress({ addr }) {
+  .next(function postAddress({ addr }) {
     // call post address
     console.log(addr);
     return {
       address_id: '1234',
     };
   })
-  .then(function postRule({ address_id, previous: { supplier_name } }) {
+  .next(function postRule1({
+    executionResult: { address_id },
+    previous: { supplier_name },
+  }) {
     console.log(address_id);
     console.log(supplier_name);
-    return { rule_id: 456 };
+    const rule_id = 'mock-rule-id';
+    const rule_methods = ['m1', 'm2'];
+    return {
+      rule_id,
+      rule_methods,
+    };
   })
-  .then(function renderRuleId(x) {
-    console.log(`Level 3: ${x.rule_id},<br> Level 2: ${x.previous.address_id} <br> Level 1: ${x.previous.previous.addr}`);
+  .next(function postPostmenConnection(x) {
+    console.log(x.executionResult.rule_methods, x.previous.executionResult.address_id);
+    const pm_conn = {
+      m: x.executionResult.rule_methods[0],
+      conn_id: 'id',
+    };
+    return pm_conn;
+  })
+  .next(function enableRetailerMethod(x) {
+    console.log(x.previous.executionResult.rule_methods[0]);
+    return {};
+  })
+  .next(function disableOtherMethods(x) {
+    console.log(x.previous.previous.executionResult.rule_methods[1]);
+    return {};
+  })
+  .next(function postRule2(x) {
+    return flow
+      .with({})
+      .next(function postPmConn() {
+        return {
+          m2: x.previous.previous.previous.executionResult.rule_methods[1],
+        };
+      })
+      .next(function enableRetailer() {
+        console.log(x.previous.previous.previous.executionResult.rule_methods[0]);
+        return {};
+      })
+      .done(function disableOthers(y) {
+        console.log(x.previous.previous.previous.executionResult.rule_methods[1]);
+        return { success: true };
+      });
+  })
+  .next(function renderRuleId(x) {
+    document.querySelector('#app').innerHTML = `<pre>${JSON.stringify(
+      x,
+      null,
+      2
+    )}</pre>`;
     return {};
   });

@@ -33,8 +33,6 @@ flow
     return { rule_id: 456 };
   })
   .then(function renderRuleId(x) {
-    document.querySelector(
-      '#app'
-    ).innerHTML = `Level 3: ${x.rule_id},<br> Level 2: ${x.previous.address_id} <br> Level 1: ${x.previous.previous.addr}`;
+    console.log(`Level 3: ${x.rule_id},<br> Level 2: ${x.previous.address_id} <br> Level 1: ${x.previous.previous.addr}`);
     return {};
   });
